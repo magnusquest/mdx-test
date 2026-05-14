@@ -1,0 +1,23 @@
+{
+  "name": "mdx-test",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "latest",
+    "@ai-sdk/react": "^3.0.184",
+    "ai": "latest",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "typescript": "^5.7"
+  }
+}
