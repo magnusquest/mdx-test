@@ -8,6 +8,7 @@ import {
 import { model } from "@/lib/llm";
 import { readSystemPrompt } from "@/lib/read-system-prompt";
 import { chatStore, streamStore, getOrCreateChat } from "@/lib/store";
+import { logLlmOutput } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,13 @@ export async function POST(req: NextRequest) {
 		originalMessages: messages,
 		generateMessageId: generateId,
 		onFinish: ({ messages: finished }) => {
+			const lastMsg = (finished as UIMessage[]).at(-1);
+			const rawText =
+				lastMsg?.parts
+					?.filter((p) => p.type === "text")
+					.map((p) => ("text" in p ? p.text : ""))
+					.join("") ?? "";
+			logLlmOutput(rawText);
 			chat.messages = finished as UIMessage[];
 			chat.activeStreamId = null;
 		},
