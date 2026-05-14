@@ -2,17 +2,19 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId } from "ai";
 import { useState, useRef, useEffect, type FormEvent, useMemo } from "react";
+import { MdxFrame } from "@/components/MdxFrame";
 
-// Persist chat ID in sessionStorage so resume works across page reloads
 function useChatId() {
-	const [chatId] = useState(() => {
-		if (typeof window === "undefined") return generateId();
+	const fallback = useRef(generateId());
+	const [chatId, setChatId] = useState<string>(() => fallback.current);
+
+	useEffect(() => {
 		const stored = sessionStorage.getItem("chat-id");
-		if (stored) return stored;
-		const id = generateId();
-		sessionStorage.setItem("chat-id", id);
-		return id;
-	});
+		const id = stored ?? fallback.current;
+		if (!stored) sessionStorage.setItem("chat-id", id);
+		setChatId(id);
+	}, []);
+
 	return chatId;
 }
 
@@ -42,6 +44,7 @@ export default function ChatPage() {
 	});
 
 	const streaming = status === "streaming" || status === "submitted";
+	const lastMsgId = messages.at(-1)?.id;
 
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,46 +63,86 @@ export default function ChatPage() {
 				maxWidth: 760,
 				margin: "0 auto",
 				padding: "2rem",
-				fontFamily: "monospace"
+				fontFamily: "system-ui, sans-serif"
 			}}>
 			<h1 style={{ fontSize: "1.25rem", marginBottom: "0.25rem" }}>MDX Chat</h1>
-			<p style={{ fontSize: "0.75rem", color: "#888", marginBottom: "1.5rem" }}>
+			<p
+				suppressHydrationWarning
+				style={{ fontSize: "0.75rem", color: "#888", marginBottom: "1.5rem" }}>
 				chat id: {chatId} — reload during generation to test stream resume
 			</p>
 
 			<div style={{ minHeight: 400, marginBottom: "1rem" }}>
-				{messages.map((m) => (
-					<div
-						key={m.id}
-						style={{
-							marginBottom: "1.25rem",
-							display: "flex",
-							flexDirection: "column",
-							alignItems: m.role === "user" ? "flex-end" : "flex-start"
-						}}>
-						<span
-							style={{ fontSize: "0.7rem", color: "#888", marginBottom: 4 }}>
-							{m.role}
-						</span>
-						<pre
+				{messages.map((m) => {
+					const text = m.parts
+						.filter((p) => p.type === "text")
+						.map((p) => ("text" in p ? p.text : ""))
+						.join("");
+
+					const isStreamingThis =
+						streaming && m.id === lastMsgId && m.role === "assistant";
+
+					return (
+						<div
+							key={m.id}
 							style={{
-								whiteSpace: "pre-wrap",
-								wordBreak: "break-word",
-								background: m.role === "user" ? "#dbeafe" : "#f5f5f5",
-								padding: "0.75rem 1rem",
-								borderRadius: 6,
-								margin: 0,
-								maxWidth: "90%",
-								fontSize: "0.875rem",
-								lineHeight: 1.6
+								marginBottom: "1.25rem",
+								display: "flex",
+								flexDirection: "column",
+								alignItems: m.role === "user" ? "flex-end" : "flex-start"
 							}}>
-							{m.parts
-								.filter((p) => p.type === "text")
-								.map((p) => ("text" in p ? p.text : ""))
-								.join("")}
-						</pre>
-					</div>
-				))}
+							<span
+								style={{ fontSize: "0.7rem", color: "#888", marginBottom: 4 }}>
+								{m.role}
+							</span>
+
+							{m.role === "user" ? (
+								<div
+									style={{
+										whiteSpace: "pre-wrap",
+										wordBreak: "break-word",
+										background: "#dbeafe",
+										padding: "0.75rem 1rem",
+										borderRadius: 6,
+										maxWidth: "90%",
+										fontSize: "0.875rem",
+										lineHeight: 1.6
+									}}>
+									{text}
+								</div>
+							) : isStreamingThis ? (
+								<pre
+									style={{
+										whiteSpace: "pre-wrap",
+										wordBreak: "break-word",
+										background: "#f5f5f5",
+										padding: "0.75rem 1rem",
+										borderRadius: 6,
+										margin: 0,
+										maxWidth: "90%",
+										fontSize: "0.875rem",
+										lineHeight: 1.6,
+										fontFamily: "monospace"
+									}}>
+									{text}
+								</pre>
+							) : (
+								<div
+									style={{
+										background: "#f9f9f9",
+										border: "1px solid #e5e5e5",
+										borderRadius: 6,
+										padding: "0.75rem 1rem",
+										width: "100%",
+										maxWidth: "90%"
+									}}>
+									<MdxFrame content={text} />
+								</div>
+							)}
+						</div>
+					);
+				})}
+
 				{streaming && (
 					<div
 						style={{ color: "#888", fontSize: "0.8rem", marginBottom: "1rem" }}>
